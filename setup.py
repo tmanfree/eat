@@ -23,7 +23,9 @@ setuptools.setup(
     url=URL,
     packages=setuptools.find_packages(),
     install_requires=[
-        'requests>=2.24.0'
+        'requests>=2.24.0',
+        'orionsdk>=0.30',
+        'argcomplete>=1.12.3'
             ],
     classifiers=[
         "Programming Language :: Python :: 3",
