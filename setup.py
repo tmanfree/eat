@@ -6,7 +6,7 @@ DESCRIPTION = "Edge Api Tool"
 URL = "https://github.com/tmanfree/EAT"
 EMAIL = "tmanfree@hotmail.com"
 AUTHOR = "Thomas Mandzie"
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 
 with open("README.md", "r") as fh:

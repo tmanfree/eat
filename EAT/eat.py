@@ -26,6 +26,7 @@ def eat():
     orion_parser = subparsers.add_parser("orion", help="solarwinds commands").add_subparsers(dest="orion")
     add_group_orion_parser = orion_parser.add_parser("add_group", help="add groups")
     add_group_orion_parser.add_argument('groupfile', help='The file with groups in it')
+    add_group_orion_parser.add_argument('-q', '--query', help="csv entry for queries, ie \"Edge Switch,Other Switch\"")
     query_orion_parser = orion_parser.add_parser("query", help="query test")
 
     argcomplete.autocomplete(parser)

@@ -20,18 +20,8 @@ class Orion:
 
     def query(self):
         try:
-            # npm_server = 'localhost'
-            # username = 'admin'
-            # password = ''
-            #
-            # verify = False
-            # if not verify:
-            #     from requests.packages.urllib3.exceptions import InsecureRequestWarning
-            #     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
             swis = orionsdk.SwisClient(self.config.orion_sv, self.config.orion_un, self.config.orion_pw)
 
-            print("Query Test:")
             results = swis.query("SELECT TOP 3 NodeID, DisplayName FROM Orion.Nodes")
 
             for row in results['results']:
@@ -39,44 +29,74 @@ class Orion:
         except Exception as err:
             print(err)
 
-    def add_group(self):
-        try:
+    def add_group(self): #only assuming adding folders with parents
+        file = open(self.cmdargs.groupfile, "r")
+        for group_entry in file:
+            # group formats:
+            # structural folder,Parent_Folder,Child_Folder,Description
+            # active folder,Parent_Folder,Child_Folder,Description,Building_Code,
+            group_list = group_entry.rstrip().split(",")
+
+            parent_name = group_list[1];
+            child_name = group_list[2];
+            description = group_list[3]
+            if group_list[0] == "active folder":
+                building_code = group_list[4]
+
+
+
             swis = orionsdk.SwisClient(self.config.orion_sv, self.config.orion_un, self.config.orion_pw)
 
-            #
-            # CREATING A NEW GROUP
-            #
-            # Creating a new group with initial Cisco and Windows devices.
-            #
-            swis.invoke('Orion.Container', 'CreateContainer',
-                        # group name
-                        'Sample Python Group',
+            if len(group_list) == 1:
+                pass #add a single group
 
-                        # owner, must be 'Core'
-                        'Core',
+            else: #add a group with parent
 
-                        # refresh frequency in seconds
-                        60,
+                try:
+                    parent_check = swis.query("SELECT ContainerID FROM Orion.Container WHERE Name=@parent_name", parent_name=parent_name)  # set valid NodeID!
+                    if len(parent_check['results']) == 1:#ID found
+                        child_check = swis.query("SELECT ContainerID FROM Orion.Container WHERE Name=@parent_name",
+                                             parent_name=child_name)  # set valid NodeID!
+                        if (len(child_check['results'])) == 0: #ensure folder doesn't exist
+                            if group_list[0] == "structural folder":
+                                swis.invoke('Orion.Container', 'CreateContainerWithParent',
+                                            parent_check['results'][0]['ContainerID'],  # parentID
+                                            child_name,  # group name
+                                            'Core',  # owner, must be 'Core'
+                                            60,  # refresh frequency in seconds
+                                            0,  # statuscalculator 0,1,2 mixed status, worst, best status
+                                            description,  # group description
+                                            True,
+                                            []
+                                            )
 
-                        # Status rollup mode:
-                        # 0 = Mixed status shows warning
-                        # 1 = Show worst status
-                        # 2 = Show best status
-                        0,
+                            elif group_list[0] == "active folder":
+                                member_list = []
+                                if self.cmdargs.query is not None:
+                                    query_list = self.cmdargs.query.split(",")
+                                    for query_string in query_list:
+                                        member_list.append({'Name':'{} Edge Node Query'.format(building_code),
+                                                 'Definition': "filter:/Orion.Nodes[CustomProperties.Device_Type='{}' AND CustomProperties.Building='{}']".format(query_string,building_code)})
 
-                        # group description
-                        'Group created by the Python sample script.',
+                                swis.invoke('Orion.Container', 'CreateContainerWithParent',
+                                            parent_check['results'][0]['ContainerID'],#parentID
+                                            child_name,# group name
+                                            'Core',# owner, must be 'Core'
+                                            60,# refresh frequency in seconds
+                                            0,#statuscalculator 0,1,2 mixed status, worst, best status
+                                            description,# group description
+                                            True,# polling enabled/disabled = true/false
+                                            # group members
+                                            member_list
+                                            )
+                                print("Added Folder {} under {}".format(child_name,parent_name))
+                        else:
+                            print("Folder {} under {} exists already".format(child_name,parent_name))
 
-                        # polling enabled/disabled = true/false
-                        True,
+                    else:
+                        pass #create the parent container?
+                        print("Parent folder {} not found, ignoring creating folder {}".format(group_list[1],group_list[2]))
 
-                        # group members
-                        [
-                            {'Name': 'Cisco Devices', 'Definition': "filter:/Orion.Nodes[Vendor='Cisco']"},
-                            {'Name': 'Windows Devices', 'Definition': "filter:/Orion.Nodes[Vendor='Windows']"}
-                        ]
-                        )
-
-        except Exception as err:
-            print("{}".format(err))
+                except Exception as err:
+                    print("{}".format(err))
 
